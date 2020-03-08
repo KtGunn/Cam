@@ -4,7 +4,8 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
-using namespace std;
+// [KTG] Not using this
+// using namespace std;
 
 void gaussianSmoothing1()
 {
@@ -18,14 +19,21 @@ void gaussianSmoothing1()
                             7, 26, 41, 26, 7,
                             4, 16, 26, 16, 4,
                             1, 4, 7, 4, 1};
-    cv::Mat kernel = cv::Mat(5, 5, CV_32F, gauss_data);
+
+    // Must normalize the kernel
+    float sum = 0;
+    for (short n=0; n<25; n++)
+	sum += gauss_data[n];
+    
+    cv::Mat kernel = cv::Mat (5, 5, CV_32F, gauss_data)/sum;
 
     // apply filter
     cv::Mat result;
-    cv::filter2D(img, result, -1, kernel, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
+    int ddepth = -1; // '-1' means same depth as source
+    cv::filter2D (img, result, -1, kernel, cv::Point(-1, -1), 0, cv::BORDER_DEFAULT);
 
     // show result
-    string windowName = "Gaussian Blurring";
+    std::string windowName = "Gaussian Blurring";
     cv::namedWindow(windowName, 1); // create window
     cv::imshow(windowName, result);
     cv::waitKey(0); // wait for keyboard input before continuing
