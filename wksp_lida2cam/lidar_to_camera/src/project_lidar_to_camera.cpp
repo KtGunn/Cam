@@ -45,16 +45,42 @@ void projectLidarToCamera2()
     cv::Mat visImg = img.clone();
     cv::Mat overlay = visImg.clone();
 
-    cv::Mat X(4,1,cv::DataType<double>::type);
-    cv::Mat Y(3,1,cv::DataType<double>::type);
-    for(auto it=lidarPoints.begin(); it!=lidarPoints.end(); ++it) {
-        // 1. Convert current Lidar point into homogeneous coordinates and store it in the 4D variable X.
+    cv::Mat X(4,1,cv::DataType<double>::type); // Lidar points in homogeneous coordinates
+    cv::Mat Y(3,1,cv::DataType<double>::type); // Images points in homogeneous coordinates
 
-        // 2. Then, apply the projection equation as detailed in lesson 5.1 to map X onto the image plane of the camera. 
+    double minX = 0.0; // Filtering parameters
+    double maxX =25.0;
+    double minZ = -1.4;
+    double maxY = 6.0;
+    double minRef = 0.01;
+    
+    for(auto it=lidarPoints.begin(); it!=lidarPoints.end(); ++it) {
+
+	double x = it->x;
+	double y = it->y;
+	double z = it->z;
+	double r = it->r;
+	
+	// Filter out point that (A) don't blelong ir (B) are questionable
+	if ( x > maxX || x < minX  || z < minZ || fabs(y) > maxY || r < minRef) {
+	    continue;
+	}
+
+	// 1. Convert current Lidar point into homogeneous coordinates and store it in the 4D variable X.
+	X.at<double>(0,0) = x;
+	X.at<double>(1,0) = y;
+	X.at<double>(2,0) = z;
+	X.at<double>(3,0) = 1.0;
+
+
+	// 2. Then, apply the projection equation as detailed in lesson 5.1 to map X onto the image plane of the camera. 
         // Store the result in Y.
+	Y = P_rect_00*R_rect_00*RT*X;
 
         // 3. Once this is done, transform Y back into Euclidean coordinates and store the result in the variable pt.
         cv::Point pt;
+	pt.x = Y.at<double>(0,0) /Y.at<double>(2,0);
+	pt.y = Y.at<double>(1,0) /Y.at<double>(2,0);
 
         float val = it->x;
         float maxVal = 20.0;
