@@ -13,7 +13,7 @@ void showLidarTopview()
     std::vector<LidarPoint> lidarPoints;
     readLidarPts("../dat/C51_LidarPts_0000.dat", lidarPoints);
 
-    // NOTE Size (width/cols, height/rows)
+  // NOTE Size (width/cols, height/rows)
     //
     cv::Size worldSize (10.0, 20.0); // width and height of sensor field in m
     cv::Size imageSize (1000*2/5, 2000*2/5); // corresponding top view image in pixel
