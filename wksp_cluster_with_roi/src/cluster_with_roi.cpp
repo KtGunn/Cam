@@ -48,7 +48,8 @@ void showLidarTopview(std::vector<LidarPoint> &lidarPoints, cv::Size worldSize, 
             float maxVal = worldSize.height;
             int red = min(255, (int)(255 * abs((val - maxVal) / maxVal)));
             int green = min(255, (int)(255 * (1 - abs((val - maxVal) / maxVal))));
-            cv::circle(topviewImg, cv::Point(x, y), 5, cv::Scalar(0, green, red), -1);
+	    int ptDia = 3;
+            cv::circle(topviewImg, cv::Point(x, y), ptDia, cv::Scalar(0, green, red), -1);
         }
     }
 
@@ -81,6 +82,9 @@ void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<Li
     cv::Mat X(4, 1, cv::DataType<double>::type);
     cv::Mat Y(3, 1, cv::DataType<double>::type);
 
+    //////////////////////////////////////////////////////////////////////////////////////
+    /// LOOP OVER ALL lidar points
+    //
     for (auto it1 = lidarPoints.begin(); it1 != lidarPoints.end(); ++it1)
     {
         // assemble vector for matrix-vector-multiplication
@@ -95,6 +99,9 @@ void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<Li
         pt.x = Y.at<double>(0, 0) / Y.at<double>(0, 2); // pixel coordinates
         pt.y = Y.at<double>(1, 0) / Y.at<double>(0, 2);
 
+	//***************************************************************************************
+	/// LOOP OVER ALL bounding boxes
+	//
         double shrinkFactor = 0.10;
         vector<vector<BoundingBox>::iterator> enclosingBoxes; // pointers to all bounding boxes which enclose the current Lidar point
         for (vector<BoundingBox>::iterator it2 = boundingBoxes.begin(); it2 != boundingBoxes.end(); ++it2)
@@ -109,10 +116,44 @@ void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<Li
             // check wether point is within current bounding box
             if (smallerBox.contains(pt))
             {
-                it2->lidarPoints.push_back(*it1);
-                lidarPoints.erase(it1);
-                it1--;
-                break;
+		// Does it belong to anhoter box?
+		bool overlap = false;
+		if (true) {
+		    for (vector<BoundingBox>::iterator itN = boundingBoxes.begin(); itN != boundingBoxes.end(); ++itN) {
+
+			// Don't test same box twice
+			if ( itN == it2 ) {
+			    continue;
+			}
+
+			cv::Rect nextBox;
+			nextBox.x = (*itN).roi.x + shrinkFactor * (*itN).roi.width / 2.0;
+			nextBox.y = (*itN).roi.y + shrinkFactor * (*itN).roi.height / 2.0;
+			nextBox.width = (*itN).roi.width * (1 - shrinkFactor);
+			nextBox.height = (*itN).roi.height * (1 - shrinkFactor);
+			
+			// If point belongs to another box we discard it
+			if ( nextBox.contains (pt) ) {
+			    overlap = true;
+			    break;
+			}
+		    }
+		}
+		
+		if ( !overlap ) {
+		    // Add this lidar point to the Bounding Box data structure
+		    it2->lidarPoints.push_back(*it1);
+		}   
+
+		// Remove this lidar point from the list of lidar
+		// points; its taken OR overlaps two boxes (or more)
+		lidarPoints.erase(it1);
+		
+		// Important! (the kind of detail I might miss at first
+		it1--;
+		
+		break;
+
             }
         } // eof loop over all bounding boxes
 
@@ -128,11 +169,12 @@ int main()
     readBoundingBoxes("../dat/C53A3_currBoundingBoxes.dat", boundingBoxes);
 
     clusterLidarWithROI(boundingBoxes, lidarPoints);
+
     for (auto it = boundingBoxes.begin(); it != boundingBoxes.end(); ++it)
     {
         if (it->lidarPoints.size() > 0)
         {
-            showLidarTopview(it->lidarPoints, cv::Size(10.0, 25.0), cv::Size(1000, 2000));
+            showLidarTopview(it->lidarPoints, cv::Size(10.0, 25.0), cv::Size(1000*2/5, 2000*2/5));
         }
     }   
 
